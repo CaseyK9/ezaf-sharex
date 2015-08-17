@@ -55,8 +55,18 @@ func isAllowed(r *http.Request) bool {
 	return false
 }
 
-func findFreeFilename() {
+func doesFileExist(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil { return true }
+	if os.IsNotExist(err) { return false }
+	return true
+}
 
+func findFreeFilename(filename string) string {
+	for doesFileExist(FilesFolderPath + filename) {
+		filename = "_" + filename
+	}
+	return filename
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -82,9 +92,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	fmt.Printf("Uploading %s\n", handler.Filename)
+	filename := findFreeFilename(handler.Filename)
 
-	f, err := os.OpenFile(FilesFolderPath + handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	fmt.Printf("Uploading %s\n", filename)
+
+	f, err := os.OpenFile(FilesFolderPath + filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -94,7 +106,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	status := UploadStatus{}
 
-	u := &url.URL{Path: handler.Filename}
+	u := &url.URL{Path: filename}
 	encodedFilename := u.String()
 
 	status.Path = "f/" + encodedFilename
