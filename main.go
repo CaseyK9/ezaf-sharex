@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"io"
+	"net/url"
 )
 
 type UploadStatus struct {
@@ -54,6 +55,10 @@ func isAllowed(r *http.Request) bool {
 	return false
 }
 
+func findFreeFilename() {
+
+}
+
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if !isAllowed(r) {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -77,6 +82,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	fmt.Printf("Uploading %s\n", handler.Filename)
+
 	f, err := os.OpenFile(FilesFolderPath + handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -86,7 +93,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(f, file)
 
 	status := UploadStatus{}
-	status.Path = "f/" + handler.Filename
+
+	u := &url.URL{Path: handler.Filename}
+	encodedFilename := u.String()
+
+	status.Path = "f/" + encodedFilename
 
 	json.NewEncoder(w).Encode(status)
 }
