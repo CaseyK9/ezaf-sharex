@@ -16,6 +16,7 @@ type UploadStatus struct {
 }
 type ConfigFile struct {
 	AllowedIps []string
+	AllowProxyIp bool
 }
 
 func contains(s []string, e string) bool {
@@ -41,10 +42,18 @@ func isAllowed(r *http.Request) bool {
 	var cfg ConfigFile
 	json.Unmarshal(file, &cfg)
 
-	ip, _, e := net.SplitHostPort(r.RemoteAddr)
-	if e != nil {
-		fmt.Printf("Failed to split ip: %v\n", r.RemoteAddr)
-		return false
+	var ip string
+
+	if cfg.AllowProxyIp {
+		ip = r.Header.Get("X-Real-IP")
+	}
+
+	if ip == "" {
+		ip, _, e = net.SplitHostPort(r.RemoteAddr)
+		if e != nil {
+			fmt.Printf("Failed to split ip: %v\n", r.RemoteAddr)
+			return false
+		}
 	}
 
 	if contains(cfg.AllowedIps, ip) {
